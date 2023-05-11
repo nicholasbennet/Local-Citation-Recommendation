@@ -12,14 +12,12 @@ def ensure_dir_exists(path):
 
 
 def load_model( model_folder ):
-    ckpt_list =  glob( model_folder + "/*.pt" )
-    if len( ckpt_list ) >0:
+    if ckpt_list := glob(f"{model_folder}/*.pt"):
         ckpt_list.sort( key = os.path.getmtime )
         ckpt_name = ckpt_list[-1]
-        ckpt = torch.load( ckpt_name,  map_location=torch.device('cpu') )
+        return torch.load( ckpt_name,  map_location=torch.device('cpu') )
     else:
-        ckpt = None
-    return ckpt
+        return None
 
 def save_model(  module_dicts ,save_name , max_to_keep = 0, overwrite = True ):
     folder_path = os.path.dirname( os.path.abspath( save_name )  )
@@ -46,7 +44,7 @@ def save_model(  module_dicts ,save_name , max_to_keep = 0, overwrite = True ):
         torch.save( state_dicts, save_name )
 
     if max_to_keep > 0:
-        pt_file_list = glob(folder_path+"/*.pt")
+        pt_file_list = glob(f"{folder_path}/*.pt")
         pt_file_list.sort( key= lambda x: os.path.getmtime(x) )
         for idx in range( len( pt_file_list ) - max_to_keep ):
             os.remove( pt_file_list[idx]  )

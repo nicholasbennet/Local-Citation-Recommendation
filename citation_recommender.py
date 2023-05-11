@@ -66,8 +66,7 @@ class Prefetcher:
                             [ query.get("local_context", "") , self.citation_context_label ]  
                         ]  
                     ]
-        candidates = self.ranker.get_top_n( n, query_text )
-        return candidates
+        return self.ranker.get_top_n( n, query_text )
     
     
 class Reranker:
@@ -95,20 +94,20 @@ class Reranker:
         candidate_list = original_candidate_list.copy()
         if len(candidate_list) == 0:
             return []
-        
-        global_context = citing_title + " "+ citing_abstract
+
+        global_context = f"{citing_title} {citing_abstract}"
         query_text = " ".join( global_context.split()[:int( max_input_length * 0.35 ) ] ) + self.sep_token + local_context
-        
+
         score_list = []
         for pos in range( 0, len(candidate_list), reranking_batch_size ):
             candidate_batch = candidate_list[ pos : pos + reranking_batch_size ]
             query_text_batch = [ query_text for _ in range( len( candidate_batch ) ) ]
             candidate_text_batch = [ item.get("title","")+" "+item.get( "abstract","" )  for item in candidate_batch ]
-            
+
             encoded_seqs = self.tokenizer( query_text_batch, candidate_text_batch,  max_length = max_input_length, padding =  "max_length" , truncation = True )
             for key in encoded_seqs:
                 encoded_seqs[key] = torch.from_numpy(np.asarray(encoded_seqs[key])).to( self.device )
-            
+
             with torch.no_grad():
                 score_list.append(  self.scorer( {
                         "input_ids": encoded_seqs["input_ids"] ,
@@ -116,9 +115,9 @@ class Reranker:
                         "attention_mask": encoded_seqs["attention_mask"] 
                 } ).detach()  )
         score_list = torch.cat( score_list, dim =0 ).view(-1).cpu().numpy().tolist()
-        
+
         candidate_list, _ =  list(zip(*sorted( zip( candidate_list,  score_list ), key = lambda x: -x[1])))
-        
+
         return candidate_list 
     
     

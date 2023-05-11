@@ -49,7 +49,7 @@ class RerankDataset(Dataset):
         paper_info = self.paper_database.get( paper_id, { } )
         title = paper_info.get("title","")
         abstract = paper_info.get( "abstract", "" )
-        return title + " " + abstract
+        return f"{title} {abstract}"
     
     def __getitem__(self, idx):
         ## step 1: get the query information, based on local or global citation recommendation 
