@@ -9,13 +9,13 @@ import json
 import time
 
 def LOG( info, end="\n" ):
-    with open( args.log_folder + "/"+ args.log_file_name , "a" ) as f:
+    with open(f"{args.log_folder}/{args.log_file_name}", "a") as f:
         f.write( info + end )
 
 
 if __name__ == "__main__":   
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument("-log_folder")
     parser.add_argument("-log_file_name")
     parser.add_argument("-start", type = int, default = 0)
@@ -40,26 +40,25 @@ if __name__ == "__main__":
     parser.add_argument("-citation_title_label", type = int, default = 0)
     parser.add_argument("-citation_abstract_label", type = int, default = 1)
     parser.add_argument("-citation_context_label", type = int, default = 3)
-    
+
     args = parser.parse_args()
 
     if not os.path.exists(args.log_folder):
         os.makedirs(args.log_folder)
-    
+
 
     if args.prefetch_model_path is not None:
         ckpt_name = args.prefetch_model_path
     else:
         try:
-            ckpt_list =  glob( args.prefetch_model_folder + "/*.pt" )
-            if len( ckpt_list ) >0:
+            if ckpt_list := glob(f"{args.prefetch_model_folder}/*.pt"):
                 ckpt_list.sort( key = os.path.getmtime )
                 ckpt_name = ckpt_list[-1]
             else:
                 ckpt_name = None
         except:
             ckpt_name = None
-        
+
     assert ckpt_name is not None
     encoder = PrefetchEncoder( ckpt_name, args.unigram_words_path, 
                                        args.embed_dim, args.encoder_gpu_list,
@@ -67,7 +66,7 @@ if __name__ == "__main__":
                                        args.max_seq_len, args.max_doc_len, 
                                        args.n_para_types, args.num_enc_layers
                                      )
-            
+
     ranker = Ranker( args.prefetch_embedding_path, args.embed_dim , gpu_list = args.ranker_gpu_list )
     ranker.encoder = encoder
 
@@ -79,7 +78,7 @@ if __name__ == "__main__":
         corpus = corpus[args.start:args.start + args.size]
 
     context_database = json.load(open( args.context_database_path ))
-        
+
     ###################################
     K_list = args.K_list
     max_K = np.max(K_list)
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     positive_ids_list = []
     candidates_list = []
     query_time_list = []
-    
+
     for count, example in enumerate(tqdm(corpus)):
 
         context_id = example["context_id"]
@@ -104,16 +103,16 @@ if __name__ == "__main__":
         tic = time.time()
         candidates = ranker.get_top_n( max_K+1, query_text )
         tac = time.time()
-        
+
         query_time_list.append( tac - tic )
-        
+
         if citing_id in candidates and citing_id not in set( example["positive_ids"] ) :
             candidates.remove( citing_id)
         candidates = candidates[:max_K]
 
         positive_ids_list.append(example["positive_ids"])
         candidates_list.append(candidates)
-            
+
     precision_at_K = {}
     recall_at_K ={}
     F_at_K = {}

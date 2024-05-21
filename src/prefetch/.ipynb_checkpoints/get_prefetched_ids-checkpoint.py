@@ -36,23 +36,21 @@ if __name__ == "__main__":
     parser.add_argument("-citation_context_label", type = int, default = 3)
 
     args = parser.parse_args()
-        
+
     if args.prefetch_model_path is not None:
         ckpt_name = args.prefetch_model_path
     else:
         try:
             if not os.path.exists( args.prefetch_model_folder ):
                 ckpt_name = None
+            elif ckpt_list := glob(f"{args.prefetch_model_folder}/*.pt"):
+                ckpt_list.sort( key = os.path.getmtime )
+                ckpt_name = ckpt_list[-1]
             else:
-                ckpt_list =  glob( args.prefetch_model_folder + "/*.pt" )
-                if len( ckpt_list ) >0:
-                    ckpt_list.sort( key = os.path.getmtime )
-                    ckpt_name = ckpt_list[-1]
-                else:
-                    ckpt_name = None
+                ckpt_name = None
         except:
             ckpt_name = None
-    
+
     assert ckpt_name is not None
 
     encoder = PrefetchEncoder( ckpt_name, args.unigram_words_path, 
@@ -61,14 +59,14 @@ if __name__ == "__main__":
                                    args.max_seq_len, args.max_doc_len, 
                                    args.n_para_types, args.num_enc_layers
                                  )
-        
+
     ranker = Ranker( args.prefetch_embedding_path, args.embed_dim , gpu_list = args.ranker_gpu_list )
     ranker.encoder = encoder
 
     paper_database = json.load(open(args.paper_database_path))
-    
+
     context_database = json.load( open( args.context_database_path ) )
-    
+
     corpus = json.load(open(args.input_corpus_path))
 
     if args.shuffle:
@@ -79,7 +77,7 @@ if __name__ == "__main__":
     else:
         corpus = corpus[args.start:args.start + args.size]
 
-    
+
     for example in tqdm(corpus):
 
         context_id = example["context_id"]
@@ -93,13 +91,13 @@ if __name__ == "__main__":
                                   [ context_database[ context_id ]["masked_text"], args.citation_context_label ]  
                             ]  
                      ]
-        
-        
+
+
         candidates = ranker.get_top_n( args.top_K+1, query_text )
-        
+
         if citing_id in set(candidates):
             candidates.remove( citing_id )
-        
+
         example["prefetched_ids"] = candidates[:args.top_K]
 
 

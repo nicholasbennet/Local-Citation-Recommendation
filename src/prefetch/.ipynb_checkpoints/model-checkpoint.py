@@ -25,9 +25,7 @@ class AddMask( nn.Module ):
     def __init__( self ):
         super().__init__()
     def forward( self, x, pad_index ):
-        # here x is a batch of input sequences (not embeddings) with the shape of [ batch_size, seq_len]
-        mask = x == pad_index
-        return mask
+        return x == pad_index
 
 class MultiHeadAttention( nn.Module ):
     def __init__(self, embed_dim, num_heads ):
@@ -79,8 +77,7 @@ class FeedForward( nn.Module ):
         self.ln2 = nn.Linear( hidden_dim, embed_dim )
     def forward(  self, x):
         net = F.relu(self.ln1(x))
-        out = self.ln2(net)
-        return out
+        return self.ln2(net)
     
 
 class TransformerEncoderLayer(nn.Module):
@@ -113,23 +110,20 @@ class MultiHeadPoolingLayer( nn.Module ):
     def forward(self, input_embedding , mask=None, return_attention = False):
         a = self.ln_attention_score( input_embedding )
         v = self.ln_value( input_embedding )
-        
+
         a = a.view( a.size(0), a.size(1), self.num_heads, 1 ).transpose(1,2)
         v = v.view( v.size(0), v.size(1),  self.num_heads, self.dim_per_head  ).transpose(1,2)
         a = a.transpose(2,3)
         if mask is not None:
-            a = a.masked_fill( mask.unsqueeze(1).unsqueeze(1) , -1e9 ) 
+            a = a.masked_fill( mask.unsqueeze(1).unsqueeze(1) , -1e9 )
         a = F.softmax(a , dim = -1 )
-        
+
         new_v = a.matmul(v)
         new_v = new_v.transpose( 1,2 ).contiguous()
         new_v = new_v.view( new_v.size(0), new_v.size(1), -1 )
         new_v = F.relu(new_v)  ## update: add a linear activation here
         new_v = self.ln_out( new_v ).squeeze(1)
-        if return_attention:
-            return new_v, a
-        else:
-            return new_v
+        return (new_v, a) if return_attention else new_v
 
 
 class PreEncoding( nn.Module):
@@ -169,8 +163,7 @@ class SingleParagraphEncoder( nn.Module ):
 
         for encoder_layer in self.encoder_layer_list:
             net = encoder_layer( net, mask, dropout_rate)
-        para_embed = self.mha_pool( net, mask )
-        return para_embed
+        return self.mha_pool( net, mask )
 
 ## update: remove F.max_pool_1d since it cannot handle the mask and pytorch is buggy on it
 ## use multi-head pooling instead
@@ -190,11 +183,8 @@ class MultipleParagraphEncoder( nn.Module ):
 
         for encoder_layer in self.encoder_layer_list:
             net = encoder_layer( net, para_mask, dropout_rate )
-        out, a = self.mha_pool( net, para_mask , return_attention = True )  
-        if return_attention:
-            return out, a
-        else:
-            return out
+        out, a = self.mha_pool( net, para_mask , return_attention = True )
+        return (out, a) if return_attention else out
 
 class DocumentEncoder( nn.Module ):
     def __init__( self, embed_dim, num_heads, hidden_dim, vocab_size,  max_seq_len, max_doc_len , pad_index ,n_para_types, pretrained_word_embedding, num_enc_layers  ):
@@ -208,7 +198,4 @@ class DocumentEncoder( nn.Module ):
         document_paragraphs_embeddings = self.single_paragraph_encoder( document_paragraphs.view(-1, document_paragraphs.size(-1)), document_paragraphs_types.view(-1).unsqueeze(1), dropout_rate )
         document_paragraphs_embeddings = document_paragraphs_embeddings.view( -1, num_para, document_paragraphs_embeddings.size(-1) )
         document_embeddings, a = self.multiple_paragraph_encoder( document_paragraphs_embeddings, document_paragraphs_types, document_paragraphs_masks, dropout_rate, return_attention = True )
-        if return_attention:
-            return document_embeddings, a
-        else:
-            return document_embeddings
+        return (document_embeddings, a) if return_attention else document_embeddings

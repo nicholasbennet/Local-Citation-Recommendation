@@ -15,7 +15,7 @@ from transformers import AutoTokenizer
 import argparse
 
 def LOG( info, end="\n" ):
-    with open( args.log_folder + "/"+ args.log_file_name , "a" ) as f:
+    with open(f"{args.log_folder}/{args.log_file_name}", "a") as f:
         f.write( info + end )
 
 
@@ -30,12 +30,12 @@ if __name__ == "__main__":
 
     args = Dict2Class(json.load(open(args_input.config_file_path)))
 
-    
+
     if args_input.start is not None:
         args.start = args_input.start
     if args_input.size is not None:
-        args.size = args_input.size 
-    if not( args.start == 0 and args.size == 0):
+        args.size = args_input.size
+    if args.start != 0 or args.size != 0:
         args.rerank_results_save_path = args.rerank_results_save_path+"_%d_%d"%( args.start, args.size )
     try:
         if not os.path.exists(args.model_folder):
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     tokenizer = AutoTokenizer.from_pretrained( args.initial_model_path )
     tokenizer.add_special_tokens( { 'additional_special_tokens': ['<cit>','<sep>','<eos>'] } )
-                        
+
     corpus = json.load( open(args.corpus_path, "r") )
 
     if args.size == 0:
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     vocab_size = len(tokenizer)
     scorer = Scorer( args.initial_model_path, vocab_size )
     scorer.load_state_dict( ckpt["scorer"] )
-    
+
     if args.gpu_list is not None:
         assert len(args.gpu_list) == args.n_device
     else:
@@ -98,13 +98,12 @@ if __name__ == "__main__":
 
     print("starting test ...", flush = True)
 
-    for count, batch in enumerate(tqdm(rerank_dataloader)):
-
+    for batch in tqdm(rerank_dataloader):
         irrelevance_levels = batch["irrelevance_levels"].to(device)
         input_ids =  batch["input_ids"].to(device)
         token_type_ids = batch["token_type_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
-        num_positive_ids = batch[ "num_positive_ids" ] 
+        num_positive_ids = batch[ "num_positive_ids" ]
         n_doc = input_ids.size(1)
 
         num_positive_ids_list += num_positive_ids.detach().cpu().numpy().tolist()

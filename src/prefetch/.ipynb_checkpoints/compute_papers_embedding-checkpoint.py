@@ -10,7 +10,7 @@ import json
 
 if __name__ == "__main__":   
     parser = argparse.ArgumentParser()
-    
+
     parser.add_argument("-unigram_words_path")
     parser.add_argument("-prefetch_model_folder")
     parser.add_argument("-prefetch_model_path", default = None)
@@ -31,17 +31,16 @@ if __name__ == "__main__":
     parser.add_argument("-document_title_label", type = int, default = 0)
     parser.add_argument("-document_abstract_label", type = int, default = 1)
     parser.add_argument("-document_fullbody_label", type = int, default = 2)
-    
+
 
     args = parser.parse_args()
-    
+
     paper_database = json.load(open(args.paper_database_path))
 
-    available_paper_ids = list( paper_database.keys() )
-    available_paper_ids.sort()
+    available_paper_ids = sorted(paper_database.keys())
     if args.shuffle:
         np.random.shuffle( available_paper_ids )
-    
+
     if args.size == 0:
         args.size = len(available_paper_ids) 
 
@@ -49,8 +48,7 @@ if __name__ == "__main__":
         ckpt_name = args.prefetch_model_path
     else:
         try:
-            ckpt_list =  glob( args.prefetch_model_folder + "/*.pt" )
-            if len( ckpt_list ) >0:
+            if ckpt_list := glob(f"{args.prefetch_model_folder}/*.pt"):
                 ckpt_list.sort( key = os.path.getmtime )
                 ckpt_name = ckpt_list[-1]
             else:
@@ -68,14 +66,14 @@ if __name__ == "__main__":
                                    args.n_para_types, args.num_enc_layers
                                  )
 
-        
+
     ## compute embedding
     embeddings = []
     index_to_id_mapper = {}
     id_to_index_mapper = {}
-    
+
     paragraphs_cache = []
-    
+
     for index, paperid in enumerate( tqdm( available_paper_ids ) ):
         if index < args.start:
             continue
@@ -95,8 +93,8 @@ if __name__ == "__main__":
     if len(paragraphs_cache) > 0:
         embeddings.append(encoder.encode( paragraphs_cache ))
         paragraphs_cache = []
-    
-    if len(embeddings)>0:
+
+    if embeddings:
         embeddings = np.concatenate( embeddings, axis = 0 )
     else:
         embeddings = np.zeros(  (0, args.embed_dim ) ).astype(np.float32)

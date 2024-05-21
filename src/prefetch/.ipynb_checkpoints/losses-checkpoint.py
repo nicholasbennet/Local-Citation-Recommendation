@@ -16,9 +16,7 @@ class TripletLoss(nn.Module):
 
         sim_difference = sim_mat.unsqueeze(1) - sim_mat.unsqueeze(2) + margin
         sim_difference = sim_difference * mask
-        loss = torch.clamp(sim_difference, min = 0 ).sum()
-
-        return loss
+        return torch.clamp(sim_difference, min = 0 ).sum()
         
     def pairwise_similarity( self, feats, similarity = "cosine" ):
         if similarity == "cosine":

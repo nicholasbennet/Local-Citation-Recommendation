@@ -13,9 +13,9 @@ args= parser.parse_args()
 
 config = json.loads(" ".join([ line.split("#")[0] for line in open(args.config_file_path,"r") if line.split("#")[0].strip() != "" ]))
 if not os.path.exists( config["train_corpus_path"] ):
-    os.system( "cp %s %s"%( config["input_corpus_path_for_get_prefetched_ids_during_training"],
-                            config["train_corpus_path"]
-                          ) )
+    os.system(
+        f'cp {config["input_corpus_path_for_get_prefetched_ids_during_training"]} {config["train_corpus_path"]}'
+    )
 
 assert config["n_device"] > 0
 encoder_gpu_list = np.arange( config["n_device"] ).tolist()
@@ -50,33 +50,6 @@ if args.mode == "compute_paper_embedding":
                         ]           
                    ))), shell = True
                   )
-elif args.mode == "test":
-    subprocess.run(" ".join(list(map(stringfy, 
-                        [ "python", "test.py",
-                          "-log_folder",config["log_folder"],
-                          "-log_file_name", config["test_log_file_name"],
-                          "-K_list",config["K_list"],
-                          "-encoder_gpu_list", encoder_gpu_list,
-                          "-ranker_gpu_list", ranker_gpu_list,
-                          "-input_corpus_path", config["input_corpus_path_for_test"],
-                          "-unigram_words_path",config["unigram_words_path"],
-                          "-prefetch_model_folder",config["prefetch_model_folder"],
-                          "-prefetch_embedding_path",config["prefetch_embedding_path"],
-                          "-paper_database_path",config["paper_database_path"],
-                          "-context_database_path",config["context_database_path"],
-                          "-embed_dim",config["embed_dim"],
-                          "-num_heads",config["num_heads"],
-                          "-hidden_dim",config["hidden_dim"],
-                          "-max_seq_len",config["max_seq_len"],
-                          "-max_doc_len",config["max_doc_len"],
-                          "-n_para_types",config["n_para_types"],
-                          "-num_enc_layers",config["num_enc_layers"],
-                          "-citation_title_label",config["citation_title_label"],
-                          "-citation_abstract_label",config["citation_abstract_label"],
-                          "-citation_context_label",config["citation_context_label"],
-                        ]           
-                   ))), shell = True
-                  )
 elif args.mode == "get_training_examples_with_prefetched_ids_for_reranking":
     subprocess.run(" ".join(list(map(stringfy, 
                         [ "python", "get_prefetched_ids.py",
@@ -105,7 +78,7 @@ elif args.mode == "get_training_examples_with_prefetched_ids_for_reranking":
                         ]           
                    ))), shell = True
                   )
-    
+
 elif args.mode == "get_val_examples_with_prefetched_ids_for_reranking":
     subprocess.run(" ".join(list(map(stringfy, 
                         [ "python", "get_prefetched_ids.py",
@@ -134,9 +107,36 @@ elif args.mode == "get_val_examples_with_prefetched_ids_for_reranking":
                         ]           
                    ))), shell = True
                   )
-    
+
+elif args.mode == "test":
+    subprocess.run(" ".join(list(map(stringfy, 
+                        [ "python", "test.py",
+                          "-log_folder",config["log_folder"],
+                          "-log_file_name", config["test_log_file_name"],
+                          "-K_list",config["K_list"],
+                          "-encoder_gpu_list", encoder_gpu_list,
+                          "-ranker_gpu_list", ranker_gpu_list,
+                          "-input_corpus_path", config["input_corpus_path_for_test"],
+                          "-unigram_words_path",config["unigram_words_path"],
+                          "-prefetch_model_folder",config["prefetch_model_folder"],
+                          "-prefetch_embedding_path",config["prefetch_embedding_path"],
+                          "-paper_database_path",config["paper_database_path"],
+                          "-context_database_path",config["context_database_path"],
+                          "-embed_dim",config["embed_dim"],
+                          "-num_heads",config["num_heads"],
+                          "-hidden_dim",config["hidden_dim"],
+                          "-max_seq_len",config["max_seq_len"],
+                          "-max_doc_len",config["max_doc_len"],
+                          "-n_para_types",config["n_para_types"],
+                          "-num_enc_layers",config["num_enc_layers"],
+                          "-citation_title_label",config["citation_title_label"],
+                          "-citation_abstract_label",config["citation_abstract_label"],
+                          "-citation_context_label",config["citation_context_label"],
+                        ]           
+                   ))), shell = True
+                  )
 elif args.mode == "train":
-    for loop_count in range( config["max_num_loops_for_training_updating_embedding_and_prefetched_ids"] ):
+    for _ in range( config["max_num_loops_for_training_updating_embedding_and_prefetched_ids"] ):
         subprocess.run(" ".join(list(map(stringfy, 
                         [ "python","train.py",
                           "-unigram_words_path", config["unigram_words_path"],
@@ -182,7 +182,7 @@ elif args.mode == "train":
                         ]
                     ))), shell = True
                   )
-    
+
         subprocess.run(" ".join(list(map(stringfy, 
                         [ "python", "compute_papers_embedding.py",
                           "-unigram_words_path",config["unigram_words_path"],
@@ -205,7 +205,7 @@ elif args.mode == "train":
                         ]           
                    ))), shell = True
                   )
-    
+
         subprocess.run(" ".join(list(map(stringfy, 
                         [ "python", "get_prefetched_ids.py",
                           "-shuffle", 1,
@@ -233,8 +233,8 @@ elif args.mode == "train":
                         ]           
                    ))), shell = True
                   )
-    
-            
+
+
         subprocess.run(" ".join(list(map(stringfy, 
                         [ "python", "test.py",
                           "-log_folder",config["log_folder"],

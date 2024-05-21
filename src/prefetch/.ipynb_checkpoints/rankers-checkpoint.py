@@ -65,8 +65,7 @@ class Ranker:
 
     def normalize_embeddings(self, embeddings ):
         assert len( embeddings.shape ) == 2
-        normalized_embeddings = embeddings /(np.linalg.norm( embeddings, axis =1, keepdims=True )+1e-12)
-        return normalized_embeddings
+        return embeddings /(np.linalg.norm( embeddings, axis =1, keepdims=True )+1e-12)
 
 
     def get_top_n_given_embedding( self, n, query_embedding,  indices_range = None , requires_precision_conversion = True ):
@@ -103,11 +102,9 @@ class PrefetchEncoder:
             self.document_encoder = nn.DataParallel( self.document_encoder, gpu_list )
     
     def encode(self, batch_paragraphs, tokenize = None ):
-        ## tokenize is set to None, as in the self.dataset encode function document will be tokenized
-        document_info = [] 
-        for document in batch_paragraphs:
-            document_info.append( self.dataset.encode_document( document ) )
-        
+        document_info = [
+            self.dataset.encode_document(document) for document in batch_paragraphs
+        ]
         paragraph_seq_list, paragraph_type_list, paragraph_mask_list = list(zip(*document_info))
         paragraph_seq_list =  torch.from_numpy(np.asarray(paragraph_seq_list)).to(self.device)
         paragraph_type_list = torch.from_numpy(np.asarray( paragraph_type_list )).to(self.device)
@@ -163,10 +160,10 @@ class Sent2vecEncoder(Encoder):
     def encode( self, batch_paragraphs, tokenize = True ):
         if tokenize:
             batch_paragraphs = self.tokenize_batch_paragraphs( batch_paragraphs )
-        batch_text = []
-        for paragraphs in batch_paragraphs:
-            text = " ".join( [  para[0] for para in paragraphs ] )
-            batch_text.append(text)
+        batch_text = [
+            " ".join([para[0] for para in paragraphs])
+            for paragraphs in batch_paragraphs
+        ]
         return self.model.embed_sentences( batch_text )
 
 
