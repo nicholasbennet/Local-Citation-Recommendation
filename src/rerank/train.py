@@ -14,7 +14,7 @@ import numpy as np
 import argparse
 
 def LOG( info, end="\n" ):
-    with open( args.log_folder + "/"+ args.log_file_name , "a" ) as f:
+    with open(f"{args.log_folder}/{args.log_file_name}", "a") as f:
         f.write( info + end )
 
 
@@ -73,22 +73,18 @@ if __name__ == "__main__":
         os.makedirs(args.log_folder)
 
     # restore most recent checkpoint
-    if args.restore_old_checkpoint:
-        ckpt = load_model( args.model_folder )
-    else:
-        ckpt = None
-
+    ckpt = load_model( args.model_folder ) if args.restore_old_checkpoint else None
     tokenizer = AutoTokenizer.from_pretrained( args.initial_model_path )
     tokenizer.add_special_tokens( { 'additional_special_tokens': ['<cit>','<sep>','<eos>'] } )
-    
+
     corpus = json.load(open( args.train_corpus_path, "r" ))
-                
+
 
     paper_database = json.load(open(args.paper_database_path))
 
     context_database = json.load( open(args.context_database_path) )
 
-        
+
     rerank_dataset = RerankDataset( corpus, paper_database, context_database, tokenizer,
                                   rerank_top_K = args.rerank_top_K,
                                   max_input_length = args.max_input_length,
@@ -101,7 +97,7 @@ if __name__ == "__main__":
                                   worker_init_fn = lambda x:[np.random.seed( int( time.time() )+x ), torch.manual_seed(int( time.time() ) + x) ],
                                   pin_memory= True )
 
-    
+
     val_corpus = json.load( open(args.val_corpus_path, "r") )
 
     val_rerank_dataset = RerankDataset( val_corpus, paper_database, context_database, tokenizer,
@@ -125,7 +121,7 @@ if __name__ == "__main__":
         scorer.load_state_dict( ckpt["scorer"] )
         LOG("model restored!")
         print("model restored!")
-    
+
     if args.gpu_list is not None:
         assert len(args.gpu_list) == args.n_device
     else:
@@ -138,7 +134,7 @@ if __name__ == "__main__":
         scorer = nn.DataParallel( scorer, args.gpu_list )
         model_parameters = [ par for par in scorer.module.parameters() if par.requires_grad  ] 
     else:
-        model_parameters = [ par for par in scorer.parameters() if par.requires_grad  ] 
+        model_parameters = [ par for par in scorer.parameters() if par.requires_grad  ]
     optimizer = AdamW( model_parameters , lr= args.initial_learning_rate,  weight_decay = args.l2_weight  ) 
 
     if ckpt is not None:
@@ -154,7 +150,7 @@ if __name__ == "__main__":
     running_losses = []
 
     triplet_loss = TripletLoss(args.base_margin)
-    for epoch in range(args.num_epochs):
+    for _ in range(args.num_epochs):
         for count, batch in enumerate(tqdm(rerank_dataloader)):
             current_batch +=1
 
@@ -165,7 +161,7 @@ if __name__ == "__main__":
             if current_batch % args.print_every == 0:
                 print("[batch: %05d] loss: %.4f"%( current_batch, np.mean(running_losses) ))
                 LOG( "[batch: %05d] loss: %.4f"%( current_batch, np.mean(running_losses) ) )
-                os.system( "nvidia-smi > %s/gpu_usage.log"%( args.log_folder ) )
+                os.system(f"nvidia-smi > {args.log_folder}/gpu_usage.log")
                 running_losses = []
             if current_batch % args.save_every == 0 :  
                 save_model(  { 
@@ -186,7 +182,7 @@ if __name__ == "__main__":
                         break
                 print("[batch: %05d] validation loss: %.4f"%( current_batch, np.mean( running_losses_val )  ) )
                 LOG("[batch: %05d] validation loss: %.4f"%( current_batch, np.mean( running_losses_val )  ) )
-                
+
 
         running_losses_val = []
         for val_count, batch in enumerate(tqdm(val_rerank_dataloader)):
@@ -196,7 +192,7 @@ if __name__ == "__main__":
                 break
         print("[batch: %05d] validation loss: %.4f"%( current_batch, np.mean( running_losses_val )  ) )
         LOG("[batch: %05d] validation loss: %.4f"%( current_batch, np.mean( running_losses_val )  ) )
-                
+
 
 
         save_model(  { 

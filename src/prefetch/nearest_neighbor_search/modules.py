@@ -69,8 +69,7 @@ class DPBool:
         return c
     
     def pack_to_int8(self, a):
-        packed_a = np.packbits( a, axis =1 ).astype(np.int8)
-        return packed_a
+        return np.packbits( a, axis =1 ).astype(np.int8)
     
 
 class DPInt4:
@@ -78,7 +77,7 @@ class DPInt4:
         ## the input explict_vector_dim is the explicit vector dim
         ## for example, if our embedding is 200 dimension int4, then the explicit vector dim is 200
         ## while the implicit vector dim is 200/8 = 25, the implicit vector dim is used for cupy kernel
-        
+
         self.implicit_vector_dim = int(np.ceil(explicit_vector_dim/8))
         self.raw_module = cp.RawModule(code=
         """
@@ -124,10 +123,7 @@ class DPInt4:
         self.dp_int4 = self.raw_module.get_function( "matmul_dpint4" )
         self.lookup_table = np.zeros( 256, dtype = np.int32)
         for i in range(16):
-            if i <= 7:
-                self.lookup_table[i] = i
-            else:
-                self.lookup_table[i] = i - 16
+            self.lookup_table[i] = i if i <= 7 else i - 16
             
     
     ## a and b are cupy int8 arrays, in each int8 value, the upper four-bits represent a value
@@ -325,15 +321,14 @@ class BFIndexIPGPU:
             distances = self.dp( embeddings, query_embedding, self.internal_precision ,device_id)
             I = cp.argsort( -distances, axis = -1 )[:,:n]
             D = distances[ cp.arange(I.shape[0])[:,cp.newaxis].repeat(I.shape[1],axis = 1),  I ]
+        elif len(indices_range) > 0:
+            distances = self.dp( embeddings[indices_range], query_embedding, self.internal_precision,device_id )
+            I = cp.argsort( -distances, axis = -1 )[:,:n]
+            D = distances[ cp.arange(I.shape[0])[:,cp.newaxis].repeat(I.shape[1],axis = 1),  I ]
+            I = indices_range[I]
         else:
-            if len(indices_range) > 0:
-                distances = self.dp( embeddings[indices_range], query_embedding, self.internal_precision,device_id )
-                I = cp.argsort( -distances, axis = -1 )[:,:n]
-                D = distances[ cp.arange(I.shape[0])[:,cp.newaxis].repeat(I.shape[1],axis = 1),  I ]
-                I = indices_range[I]
-            else:
-                I = cp.array([]).reshape( query_embedding.shape[0], 0 )
-                D = cp.array([]).reshape( query_embedding.shape[0], 0 )
+            I = cp.array([]).reshape( query_embedding.shape[0], 0 )
+            D = cp.array([]).reshape( query_embedding.shape[0], 0 )
         return I, D
     
     ## Here the query_embedding has two dimensions, but there is only one vectors due to the limitation of current implementation
@@ -400,8 +395,10 @@ class BFIndexIPCPU:
         self.shard_size = shard_size
         self.embedding_shards = []
         self.num_shards = num_shards
-        for i in range( 0, embeddings.shape[0],shard_size ):
-            self.embedding_shards.append( embeddings[i: i+shard_size] )
+        self.embedding_shards.extend(
+            embeddings[i : i + shard_size]
+            for i in range(0, embeddings.shape[0], shard_size)
+        )
     
     def cpu_ranking_kernel( self, query_embedding,  n, shard_number, results, indices_range = None ):
         if indices_range is None:

@@ -21,7 +21,7 @@ def update_moving_average( m_ema, m, decay ):
             param_m_ema.copy_( decay * param_m_ema + (1-decay) *  param_m )
 
 def LOG( info, end="\n" ):
-    with open( args.log_folder + "/"+ args.log_file_name , "a" ) as f:
+    with open(f"{args.log_folder}/{args.log_file_name}", "a") as f:
         f.write( info + end )
 
 def train_iteration( batch ):
@@ -91,11 +91,11 @@ if __name__ == "__main__":
     parser.add_argument("-citation_fullbody_label", type = int, default = 2  )
     parser.add_argument("-citation_context_label", type = int, default = 3  )
     parser.add_argument("-padding_paragraph_label", type = int, default = 10  )
-    
-    
+
+
     args = parser.parse_args()
 
-    
+
     unigram_embedding = pickle.load( open( args.unigram_embedding_path, "rb" ) )
     words = pickle.load( open( args.unigram_words_path, "rb" ) )
 
@@ -114,12 +114,12 @@ if __name__ == "__main__":
 
     context_database = json.load(open( args.context_database_path ))
     available_paper_ids = None
-    
+
     train_dataset = PrefetchDataset( train_corpus, paper_database, context_database, available_paper_ids, 
                                      args.max_seq_len, 
                                      args.max_doc_len, 
                                      words, 
-                                    
+
                                      document_title_label = args.document_title_label, 
                                      document_abstract_label = args.document_abstract_label,
                                      document_fullbody_label = args.document_fullbody_label, 
@@ -128,7 +128,7 @@ if __name__ == "__main__":
                                      citation_abstract_label = args.citation_abstract_label,
                                      citation_fullbody_label = args.citation_fullbody_label,
                                      padding_paragraph_label = args.padding_paragraph_label,
-                                    
+
                                      max_num_samples_per_batch = args.max_num_samples_per_batch,
                                      max_n_positive = args.max_n_positive,
                                      max_n_hard_negative = args.max_n_hard_negative,
@@ -169,7 +169,7 @@ if __name__ == "__main__":
         model_parameters = [ par for par in document_encoder.parameters() if par.requires_grad  ] 
 
     optimizer = torch.optim.Adam( model_parameters , lr= args.initial_learning_rate,  weight_decay = args.l2_weight  ) 
-    
+
     if ckpt is not None:
         optimizer.load_state_dict( ckpt["optimizer"] )
         LOG("optimizer restored!")
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
     running_losses = []
     triplet_loss = TripletLoss(args.base_margin)
-    
+
     # while current_batch < args.max_num_iterations:
     for count in tqdm(range( args.max_num_iterations)):
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         if current_batch % args.print_every == 0:
             print("[batch: %05d] loss: %.4f"%( current_batch, np.mean(running_losses) ))
             LOG( "[batch: %05d] loss: %.4f"%( current_batch, np.mean(running_losses) ) )
-            os.system( "nvidia-smi > %s/gpu_usage.log"%( args.log_folder ) )
+            os.system(f"nvidia-smi > {args.log_folder}/gpu_usage.log")
             running_losses = []
 
         if current_batch % args.save_every == 0 or count == args.max_num_iterations - 1:  
